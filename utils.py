@@ -13,7 +13,7 @@ def assert_units(var,unit):
     '''
     if not hasattr(var,'unit'):
         var = var*unit
-    elif var.unit is not unit
+    elif var.unit is not unit:
         var = var.to(unit)
     return var
 
