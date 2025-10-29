@@ -293,10 +293,8 @@ class Binary():
         self.f_end   = None
         self.T_merge = None
         
-        ## call the merger frequency the frequency at t_c - t = 1 s
-        ## NOTE: we diverge from the Hazboun+19 convention here; their f0 is the monochromatic PTA-band frequency,
-        ##       whereas ours is the frequency at merger in the LISA band
-        self.f0 = f_by_dt(1*u.s,self.mc)
+        ## merger frequency is f_ISCO
+        self.f0 = get_fgw_isco(self.M)
 
         
 
