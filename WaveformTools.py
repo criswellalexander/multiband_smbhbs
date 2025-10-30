@@ -4,6 +4,7 @@ from scipy import optimize
 from scipy import interpolate
 import astropy.units as u
 import astropy.constants as c
+import astropy.coordinates as cc
 
 import PhenomA as pa
 import LISA as li
@@ -226,7 +227,7 @@ def get_XX_TDI(OBJ, lisa, f, Aeff, theta, phi, iota):
 ## let's make a class for the binaries
 class Binary():
 
-    def __init__(self,m1,m2,d_L=None,z=None,sky_loc=None,circular=True):
+    def __init__(self,m1,m2,d_L=None,z=None,sky_loc=None,circular=True,verbose=False):
         '''
         Class to house binary attributes and related methods.
 
@@ -255,7 +256,7 @@ class Binary():
 
         ## handle sky location
         if sky_loc is not None:
-            if type(sky_loc) is not astropy.coordinates.sky_coordinate.SkyCoord:
+            if type(sky_loc) is not cc.sky_coordinate.SkyCoord:
                 raise TypeError("sky_loc must be an astropy SkyCoord object.")
         self.sky_loc = sky_loc
         
@@ -265,7 +266,8 @@ class Binary():
         elif d_L is None:
             self.z = z # TODO: check that one of these is provided
             self.d_L = get_Dl(self.z, Omega_m, H0,unit_out=u.Mpc) # d_L returned in Mpc
-            print("Redshift provided. \n\tLuminosity Distance........... {} Mpc".format(self.d_L))
+            if verbose:
+                print("Redshift provided. \n\tLuminosity Distance........... {}".format(self.d_L))
         elif z is None:
             self.d_L = utils.assert_units(d_L,u.Mpc)
             self.z = optimize.root(get_z, 1., args=(self.d_L, Omega_m, H0)).x[0]
@@ -319,8 +321,6 @@ class Binary():
             f, hc = self.CalcStrain_LISA(observatory, **kwargs) ## returns TDI X
         elif observatory.name == 'muAres' or observatory.name == 'astrometry':
             f, hc = self.CalcStrain_generic(observatory, **kwargs)
-        elif observatory.name == 'astrometry':
-            f, hc = self.CalcStrain_astrometry(observatory, **kwargs)
         else:
             raise ValueError("Unknown observatory. Can be 'LISA', 'muAres', or 'astrometry'.")
 
@@ -332,8 +332,6 @@ class Binary():
             snr = self.CalcSNR_LISA(f, hc, observatory) ## assumed TDI X
         elif observatory.name == 'muAres' or observatory.name == 'astrometry':
             snr = self.CalcSNR_generic(f, hc, observatory)
-        elif observatory.name == 'astrometry':
-            snr = self.CalcSNR_astrometry(f, hc, observatory)
         else:
             raise ValueError("Unknown observatory. Can be 'LISA', 'muAres', or 'astrometry'.")
 
@@ -587,6 +585,51 @@ class Binary():
             else:
                 ax.loglog(freqs, X_char, 'r.')
             ax.loglog(f, np.sqrt(f*observatory.Sn(f)))    
+    
+        return
+
+    def add_strain_to_plot(self, ax, freqs, hc, lisa_xchar=False, **kwargs):
+        '''
+        Add the binary merger characteristic strain to a generic plot axis
+
+        Arguments
+        ------------
+        ax (matplotlib.axes)
+            Axis on which to plot the characteristic strain.
+        freqs (array)
+            Binary frequencies
+        hc (array)
+            Characteristic strain at freqs.
+        lisa_xchar (bool, optional)
+            Whether to expect LISA XX variable, which needs slightly different treatment. Default False.
+        **kwargs
+            Keyword arguments for plt.plot()
+        
+        '''
+
+        if hasattr(freqs,"unit"):
+            freqs = freqs.to(u.Hz).value
+        
+        if (self.Figure_Type == 'track'):
+            if lisa_xchar:
+                ax.loglog(freqs, np.sqrt(freqs)*hc, **kwargs)
+            else:
+                ax.loglog(freqs, hc, **kwargs)
+            
+        elif (self.Figure_Type == 'track_sky_dependent'):
+    
+            ax.loglog(freqs, np.sqrt(freqs)*hc, **kwargs)  
+            
+        elif (self.Figure_Type == 'point_sky_dependent'):
+    
+            ax.loglog(freqs, np.sqrt(freqs)*hc, 'r.', **kwargs)   
+    
+        elif (self.Figure_Type == 'point'):
+    
+            if lisa_xchar:
+                ax.loglog(freqs, np.sqrt(freqs)*hc, 'r.', **kwargs)
+            else:
+                ax.loglog(freqs, hc, 'r.', **kwargs)  
     
         return
 

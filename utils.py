@@ -1,5 +1,6 @@
 import numpy as np
 import astropy.units as u
+from matplotlib import pyplot as plt
 
 def assert_units(var,unit):
     '''
@@ -73,5 +74,20 @@ def savefig(filename,saveto=None):
     else:
         fig_path_base = filename
     savefig_png_pdf(fig_path_base, dpi=200)
+    
+    return
+
+def set_style():
+    plt.style.use('default')
+    default_cycler=plt.cycler(color=['mediumorchid','teal','navy','firebrick','goldenrod','slategrey'])
+    plt.rc('axes', prop_cycle=default_cycler)
+    
+    plt.rcParams['font.family'] = 'STIXGeneral'  # Closely matches Computer Modern
+    plt.rcParams['mathtext.fontset'] = 'stix'    # Use STIX for math
+    
+    plt.rcParams['axes.titlesize'] = 16
+    plt.rcParams['axes.labelsize'] = 14
+    plt.rcParams['xtick.labelsize'] = 14
+    plt.rcParams['ytick.labelsize'] = 14
     
     return

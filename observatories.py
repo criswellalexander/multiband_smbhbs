@@ -2,7 +2,7 @@ import numpy as np
 from scipy import interpolate
 import scipy.stats as st
 
-import glob, json
+import glob, json, os
 import logging
 from tqdm import tqdm
 
@@ -20,6 +20,7 @@ import matplotlib.cm
 from matplotlib import patches
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+os.environ['JAX_PLATFORMS'] = 'cpu'
 import hasasia.sensitivity as hsen
 # import hasasia.sim as hsim
 import hasasia.skymap as hsky
@@ -34,6 +35,71 @@ fm     = 3.168753575e-8   # LISA modulation frequency
 YEAR   = 3.15581497632e7  # year in seconds
 AU     = 1.49597870660e11 # Astronomical unit (meters)
 Clight = 299792458.       # speed of light (m/s)
+
+def plot_multi_obs_sensitivity(obs_list,xlim=None, ylim=None, colors=None,labels=None,
+                               show=True,save=False,saveto=None):
+    """ 
+    Plot the characteristic strain sensitivity curve of multiple Observatory objects.
+    
+    If figure_file is provided, the figure will be saved
+
+    Arguments
+    ------------------
+    obs_list (list)
+        List of Observatory objects for which to plot sensitivity curves.
+    xlim (tuple. optional)
+        Plot x limits. Default None (matplotlib auto-lims).
+    ylim (tuple. optional)
+        Plot y limits. Default None (matplotlib auto-lims).
+    colors (list of str)
+        Color strings fo each observatory to pass to plt.plot(), should be same length as obs_list.
+        Default None (current matplotlib color cycle).
+    show : bool, optional
+        Whether to show the plot at runtime. The default is True.
+    save : bool, optional
+        Whether to save the created figures to disk. The default is False.
+    saveto : str, optional
+        If save, the desired output directory. The default is None (saves in current directory).
+    """
+    
+    fig, ax = plt.subplots(1, figsize=(8,6))
+    plt.tight_layout()
+
+    ax.set_xlabel(r'f [Hz]', fontsize=20, labelpad=10)
+    ax.set_ylabel(r'Characteristic Strain', fontsize=20, labelpad=10)
+    ax.tick_params(axis='both', which='major', labelsize=20)
+
+    if xlim is not None:
+        ax.set_xlim(*xlim)
+    if ylim is not None:
+        ax.set_ylim(*ylim)
+
+    for i, obs_i in enumerate(obs_list):
+        if colors is not None:
+            col_i = colors[i]
+        else:
+            col_i = None
+        if labels is not None:
+            lab_i = labels[i]
+        else:
+            if obs_i.name == 'astrometry':
+                lab_i = obs_i.survey
+            else:
+                lab_i = obs_i.name
+        
+        obs_i.add_sensitivity_curve(ax,color=col_i,label=lab_i)
+
+    plt.legend()
+    
+    ## save
+    if save:
+        utils.savefig('multi_senitivity_curve',saveto=saveto)
+    
+    if show:
+        plt.show()
+
+    return ax
+
 
    
 class Observatory():
@@ -51,6 +117,8 @@ class Observatory():
             if sens_curve is None:
                 raise ValueError("Must provide sensitivity curve if interp_Sn is True.")
             self.base_fs, self.base_Sn = self.setup_interpolator(sens_curve)
+            self.fmin = self.base_fs[0]
+            self.fmax = self.base_fs[-1]
             self._Sn = self._interp_Sn
 
 
@@ -85,7 +153,10 @@ class Observatory():
         '''
         Wrapper for the sensitivity curve; overwrite if providing calculations for this Observatory.
         '''
-        return self._Sn(f)
+        filt = (f > self.fmin)*(f < self.fmax)
+        Sn = np.atleast_1d(self._Sn(f)*filt)
+        Sn[Sn==0] = np.inf
+        return Sn
     
     def PlotSensitivityCurve(self,fs=None,Sn=None,xlim=None, ylim=None, figure_file=None):
         """ 
@@ -118,6 +189,27 @@ class Observatory():
         if (figure_file != None):
             plt.savefig(figure_file)
             
+        return
+
+    def add_sensitivity_curve(self,ax,fs=None,**kwargs):
+        '''
+        Adds the observatory's sensitivity curve to an existing plot
+
+        Arguments
+        --------------
+        ax (matplotlib.axes)
+            Matplotlib axes on which to plot the sensitivity curve.
+        fs (array, optional)
+            Frequencies, if desired. Default None (uses the observatory's default frequencies)
+        **kwargs (kwargs, optional)
+            Keyword arguments to pass to plt.loglog()
+        '''
+        if fs is None:
+            fs = self.base_fs
+        Sn = self.Sn(fs)
+
+        ax.loglog(fs, np.sqrt(fs*Sn), **kwargs) # plot the characteristic strain
+
         return
 
 class Astrometry(Observatory):
@@ -204,7 +296,7 @@ class Astrometry(Observatory):
         ## mask the sensitivity "curve" to the allowed frequencies 
         ## and set the sensitivity to +np.inf outside of that range
         filt = (f > self.fmin)*(f < self.fmax)
-        Sn = self.psd*filt
+        Sn = np.atleast_1d(self.psd*filt)
         Sn[Sn==0] = np.inf
 
         return Sn
@@ -290,6 +382,11 @@ class LISA(Observatory):
         # create an interpolation function; attach to LISA object
         self.R_INTERP = interpolate.splrep(f, R, s=0)
         self.FLAG_R_APPROX = False
+        self.base_fs = f
+
+        ## setting these manually
+        self.fmin = self.base_fs.min()
+        self.fmax = self.base_fs.max()
         
         return
         
@@ -370,6 +467,10 @@ class LISA(Observatory):
             R = 3./20./(1. + 6./10.*(f/self.fstar)**2)*self.NC
             
         Sn = self.Pn(f)/R + self.SnC(f)
+
+        filt = (f > self.fmin)*(f < self.fmax)
+        Sn = np.atleast_1d(Sn*filt)
+        Sn[Sn==0] = np.inf
     
         return Sn
     	
@@ -808,10 +909,8 @@ class EchoArray():
         
         if show:
             plt.show()
-        
-        plt.close()
 
-        return
+        return plt.gca()
 
 
 
