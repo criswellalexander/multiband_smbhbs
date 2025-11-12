@@ -274,7 +274,7 @@ class Astrometry(Observatory):
         self.fmax = (1/(2*self.T_cadence)).to(u.Hz).value
 
         ## set default frequency range
-        self.base_fs = np.linspace(self.fmin,self.fmax,500)
+        self.base_fs = np.logspace(np.log10(self.fmin),np.log10(self.fmax),500)
 
         
         
