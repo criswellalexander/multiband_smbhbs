@@ -48,7 +48,23 @@ def savefig_png_pdf(filepath,extensions=['.png','.pdf'],**savefig_kwargs):
         if ext[0] != '.':
             ext = '.'+ext
         ## save
-        plt.savefig(filepath+ext,**savefig_kwargs)
+        ## handling for .eps needing weirdly high dpi compared to png
+        if ext == '.eps':
+            if 'dpi' in savefig_kwargs.keys():
+                default = False
+                temp_dpi = savefig_kwargs['dpi']
+                new_dpi = 4*temp_dpi
+            else:
+                default = True
+                new_dpi = 1200
+            savefig_kwargs['dpi'] = new_dpi
+            plt.savefig(filepath+ext,**savefig_kwargs)
+            if default:
+                savefig_kwargs['dpi'] = None
+            else:
+                savefig_kwargs['dpi'] = temp_dpi
+        else:
+            plt.savefig(filepath+ext,**savefig_kwargs)
     
     return
 
@@ -73,7 +89,7 @@ def savefig(filename,saveto=None):
         fig_path_base = (saveto + '/{}'.format(filename)).replace('//','/')
     else:
         fig_path_base = filename
-    savefig_png_pdf(fig_path_base, dpi=200)
+    savefig_png_pdf(fig_path_base, extensions=['.png','.pdf','.eps'],dpi=300)
     
     return
 

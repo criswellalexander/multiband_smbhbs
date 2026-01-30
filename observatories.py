@@ -535,7 +535,7 @@ class LISA(Observatory):
 
 
     
-class EchoArray():
+class OrphanArray():
     '''
     Class to wrap all the PTA echo calculations.
     '''
@@ -819,7 +819,7 @@ class EchoArray():
 
         
     
-    def calc_allsky_snr(self,binary,plot=False):
+    def calc_allsky_snr(self,binary,plot=False,prog=True):
         '''
         Calculate the per-pulsar echo array SNR across the sky.
 
@@ -847,15 +847,22 @@ class EchoArray():
         rho2_by_loc = []
         fs_by_loc = []
         amps_by_loc = []
-        
-        for idx in tqdm(range(hp.nside2npix(self.nside))):
-            sky_loc = self.HEALPix.healpix_to_skycoord(idx)
-            binary.sky_loc = sky_loc
-            rho2_i, fs_i, amps_i = self.compute_echo(binary)
-            rho2_by_loc.append(rho2_i)
-            fs_by_loc.append(fs_i)
-            amps_by_loc.append(amps_i)
-
+        if prog:
+            for idx in tqdm(range(hp.nside2npix(self.nside))):
+                sky_loc = self.HEALPix.healpix_to_skycoord(idx)
+                binary.sky_loc = sky_loc
+                rho2_i, fs_i, amps_i = self.compute_echo(binary)
+                rho2_by_loc.append(rho2_i)
+                fs_by_loc.append(fs_i)
+                amps_by_loc.append(amps_i)
+        else:
+            for idx in range(hp.nside2npix(self.nside)):
+                sky_loc = self.HEALPix.healpix_to_skycoord(idx)
+                binary.sky_loc = sky_loc
+                rho2_i, fs_i, amps_i = self.compute_echo(binary)
+                rho2_by_loc.append(rho2_i)
+                fs_by_loc.append(fs_i)
+                amps_by_loc.append(amps_i)
         ## reset binary sky location
         binary.sky_loc = sky_loc_temp
         
@@ -898,19 +905,19 @@ class EchoArray():
             rho2_by_loc = self.get_summed_rho2(rho2_by_loc)
         
         hp_old.mollview(np.sqrt(rho2_by_loc),#max=3,
-                        unit="SNR",title="Echo Array SNR by GW Origin")
+                        unit="SNR",title="Array SNR by GW Origin")
         if plot_psrs:
             hp_old.projscatter(theta=[sp.theta for sp in self.psr_specs],phi=[sp.phi for sp in self.psr_specs],
                                s=3,marker='*',c='cyan')
         
         ## save
         if save:
-            utils.savefig('Echo_SNR_Skymap',saveto=saveto)
+            utils.savefig('Stacked_SNR_Skymap',saveto=saveto)
         
         if show:
             plt.show()
 
-        return plt.gca()
+        return
 
 
 
