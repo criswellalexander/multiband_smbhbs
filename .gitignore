@@ -1,5 +1,6 @@
 
 figures.zip
+./figures/
 /data
 .ipynb_checkpoint*
 .ipynb_checkpoints/*
