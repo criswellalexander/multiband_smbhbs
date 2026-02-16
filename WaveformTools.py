@@ -6,6 +6,8 @@ import astropy.units as u
 import astropy.constants as c
 import astropy.coordinates as cc
 
+import legwork as lw
+
 import PhenomA as pa
 import LISA as li
 import utils
@@ -227,7 +229,7 @@ def get_XX_TDI(OBJ, lisa, f, Aeff, theta, phi, iota):
 ## let's make a class for the binaries
 class Binary():
 
-    def __init__(self,m1,m2,d_L=None,z=None,sky_loc=None,circular=True,verbose=False):
+    def __init__(self,m1,m2,d_L=None,z=None,sky_loc=None,eccentric=False,verbose=False):
         '''
         Class to house binary attributes and related methods.
 
@@ -242,12 +244,12 @@ class Binary():
             Redshift. One of d_L or z must be provided.
         sky_loc (astropy.coordinates.SkyCoord object):
             Sky location of the merger as seen from Earth, as an astropy SkyCoord object.
-        circular (bool):
-            Whether to treat the binary as circular (Default True; eccentric binaries not yet implemented)
+        eccentric (bool):
+            Whether to treat the binary as eccentric (Default False; eccentric binaries not yet implemented)
         
         '''
         ## we may eventually wish to have eccentric systems
-        if not circular:
+        if eccentric:
             raise NotImplementedError
 
         ## deal with units
@@ -297,17 +299,28 @@ class Binary():
         
         ## merger frequency is f_ISCO
         self.f0 = get_fgw_isco(self.M)
-
+        
+        ## assign funcs for circular case
+        if not eccentric:
+            self.f_of_t = self._f_of_t
+            self.t_of_f = self._t_of_f
+            self.h_echo_of_f = self._h_echo_of_f
+            self.h_echo_of_t = self._h_echo_of_t
+        else:
+            self.f_of_t = self._ecc_f_of_t
+            self.t_of_f = self._ecc_t_of_f
+            self.h_echo_of_f = self._ecc_h_echo_of_f
+            self.h_echo_of_t = self._ecc_h_echo_of_t
         
 
     ## wrappers for f(t), t(f), h_echo(f), h_echo(t)
-    def f_of_t(self,t):
+    def _f_of_t(self,t):
         return f_by_dt(t,self.mc)
-    def t_of_f(self,f):
+    def _t_of_f(self,f):
         return(f,self.mc)
-    def h_echo_of_f(self,f):
-        return calc_h0(self.mc,f,self.d_L)
-    def h_echo_of_t(self,t):
+    def _h_echo_of_f(self,f):
+        return calc_h_echo(self.mc,f,self.d_L)
+    def _h_echo_of_t(self,t):
         foft = self.f_of_t(t)
         return calc_h_echo(self.mc,foft,self.d_L)
 
