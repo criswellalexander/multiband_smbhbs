@@ -251,11 +251,15 @@ class Astrometry(Observatory):
             self.T_survey = 3.5*u.yr
             self.T_cadence = 30*u.min
             self.N_stars = 160000
+            self.systematic_fac = 10 ## per Kris
+            
+        ## Roman dedicated time is 6 seasons of 70.5 days (less 2) out of 5 year survey (pg 15 of arXiv:2505.10574)
         elif self.survey == 'Roman':
             self.sigma_ss = 1.1*u.mas
-            self.T_survey = 5*u.yr
-            self.T_cadence = 12*u.min
+            self.T_survey = 1.15*u.yr 
+            self.T_cadence = 12.1*u.min
             self.N_stars = 1e8
+            self.systematic_fac = 10 ## 100 per Kris
         else:
             ## these need to be provided as kwargs
             self.sigma_ss = sigma_ss
@@ -266,7 +270,7 @@ class Astrometry(Observatory):
         self.Tobs = self.T_survey
         
         self.h_sens = self.get_h_sens(self.sigma_ss,self.T_survey,self.T_cadence,self.N_stars)
-        self.psd = 0.5*self.get_psd_simple(self.sigma_ss,self.T_survey,self.T_cadence,self.N_stars).value
+        self.psd = 0.5*self.systematic_fac*self.get_psd_simple(self.sigma_ss,self.T_survey,self.T_cadence,self.N_stars).value
         
         ## minimum frequency determined by survey duration
         self.fmin = (1/self.T_survey).to(u.Hz).value
