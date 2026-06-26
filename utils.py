@@ -68,7 +68,7 @@ def savefig_png_pdf(filepath,extensions=['.png','.pdf'],**savefig_kwargs):
     
     return
 
-def savefig(filename,saveto=None):
+def savefig(filename,saveto=None,**savefig_kwargs):
     """
     Utility function to save a figure of name [filename] to path [saveto] as both png and pdf.
 
@@ -89,7 +89,7 @@ def savefig(filename,saveto=None):
         fig_path_base = (saveto + '/{}'.format(filename)).replace('//','/')
     else:
         fig_path_base = filename
-    savefig_png_pdf(fig_path_base, extensions=['.png','.pdf','.eps'],dpi=300)
+    savefig_png_pdf(fig_path_base, extensions=['.png','.pdf','.eps'],dpi=300,**savefig_kwargs)
     
     return
 

@@ -37,7 +37,7 @@ AU     = 1.49597870660e11 # Astronomical unit (meters)
 Clight = 299792458.       # speed of light (m/s)
 
 def plot_multi_obs_sensitivity(obs_list,xlim=None, ylim=None, colors=None,labels=None,
-                               show=True,save=False,saveto=None):
+                               show=True,save=False,saveto=None,figsize=None):
     """ 
     Plot the characteristic strain sensitivity curve of multiple Observatory objects.
     
@@ -60,9 +60,13 @@ def plot_multi_obs_sensitivity(obs_list,xlim=None, ylim=None, colors=None,labels
         Whether to save the created figures to disk. The default is False.
     saveto : str, optional
         If save, the desired output directory. The default is None (saves in current directory).
+    figsize : tuple, optional
+        Figure size, if desired. Default None (figsize=(8,6)).
     """
-    
-    fig, ax = plt.subplots(1, figsize=(8,6))
+
+    if figsize is None:
+        figsize=(8,6)
+    fig, ax = plt.subplots(1, figsize=figsize)
     plt.tight_layout()
 
     ax.set_xlabel(r'f [Hz]', fontsize=20, labelpad=10)
@@ -251,7 +255,7 @@ class Astrometry(Observatory):
             self.T_survey = 3.5*u.yr
             self.T_cadence = 30*u.min
             self.N_stars = 160000
-            self.systematic_fac = 10 ## per Kris
+            self.systematic_fac = 1 ## per Kris
             
         ## Roman dedicated time is 6 seasons of 70.5 days (less 2) out of 5 year survey (pg 15 of arXiv:2505.10574)
         elif self.survey == 'Roman':
@@ -259,7 +263,7 @@ class Astrometry(Observatory):
             self.T_survey = 1.15*u.yr 
             self.T_cadence = 12.1*u.min
             self.N_stars = 1e8
-            self.systematic_fac = 10 ## 100 per Kris
+            self.systematic_fac = 100**2 ## 100 in h_sens per Kris, squared to PSD
         else:
             ## these need to be provided as kwargs
             self.sigma_ss = sigma_ss
@@ -562,6 +566,7 @@ class OrphanArray():
         pulsar_distances (str or array, optional):
             Pulsar distances. Several options:
             - If 'default', will be drawn from a volumetrically uniform distribution in the Galactic plane (p(r)~r^2).
+            - If 'linear', will be drawn from a linear radially-dependent distribution in the Galactic plane (p(r) ~ r)
             - If 'data', will follow the distances of the pulsars in datadir. 
                 WARNING: if your pulsars do not have distances, this will result in all pulsar distances being set to 1kpc by Enterprise.
             - If pulsar_distances is an array, it must be of length(pulsars) and give the distance for each in kpc.
@@ -600,6 +605,9 @@ class OrphanArray():
             if pulsar_distances == 'default':
                 self.pdist_extent = pdist_extent
                 self.pulsar_distances = self.draw_pulsar_dists(self.Npulsars,self.pdist_extent,self.rng)
+            elif pulsar_distances == 'linear':
+                self.pdist_extent = pdist_extent
+                self.pulsar_distances = self.draw_pulsar_dists(self.Npulsars,self.pdist_extent,self.rng,index=1)
             elif pulsar_distances == 'data':
                 print("Continuing with original pulsar distances...")
                 self.pulsar_distances = None
@@ -704,7 +712,7 @@ class OrphanArray():
         corr = np.diag(sigma_sqr)
         return corr
     
-    def draw_pulsar_dists(self,N,extent,rng):
+    def draw_pulsar_dists(self,N,extent,rng,index=2):
         '''
         Draw pulsar distances from a volumetrically uniform distribution in the Galactic plane (p(r) ~ r^2).
 
@@ -716,14 +724,15 @@ class OrphanArray():
             Maximum allowed pulsar distance in kpc.
         rng (numpy.random.default_rng):
             rng
-
+        index (float):
+            Index of the power law probability. Default is 2 (volumetric uniform)
         Returns
         ------------
         pdists (array)
             Pulsar distances in kpc.
         '''
         extent = utils.assert_units(extent,u.kpc).value
-        pdists = st.beta.rvs(3,1,scale=0.99*extent,size=N,random_state=rng)*u.kpc ## this is a p(r) ~ r**2 dist
+        pdists = st.beta.rvs(index+1,1,scale=0.99*extent,size=N,random_state=rng)*u.kpc ## this is a p(r) ~ r**2 dist
         return pdists
 
     def assign_pulsar_distances(self):

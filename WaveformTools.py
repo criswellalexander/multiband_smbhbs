@@ -317,7 +317,7 @@ class Binary():
     def _f_of_t(self,t):
         return f_by_dt(t,self.mc)
     def _t_of_f(self,f):
-        return(f,self.mc)
+        return dt_by_f(f,self.mc)
     def _h_echo_of_f(self,f):
         return calc_h_echo(self.mc,f,self.d_L)
     def _h_echo_of_t(self,t):
@@ -380,7 +380,7 @@ class Binary():
     ##################################
     ## observatory-agnostic methods ##
     ##################################
-    def CalcStrain_generic(self, observatory):
+    def CalcStrain_generic(self, observatory, N_track=500):
         '''
         Calculates the characteristic GW strain in a generic observatory.
         '''
@@ -388,7 +388,7 @@ class Binary():
         Delta_logf = np.log(self.f_end.to(u.Hz).value) - np.log(self.f_start.to(u.Hz).value)
         
         if (Delta_logf > 0.00005): # Generate a track
-            N = 500 # number of points
+            N = N_track # number of points
             f = np.logspace(np.log10(self.f_start.to(u.Hz).value), np.log10(self.f_end.to(u.Hz).value), N)
             
             Aeff = pa.Aeff(f, self.geom_M, self.geom_eta, self.geom_Dl)
